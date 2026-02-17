@@ -17,7 +17,5 @@ WORKDIR /app
 COPY pdf_ocr.py .
 
 ENV PYTHONUNBUFFERED=1
-WORKDIR /data
-
 ENTRYPOINT ["python", "/app/pdf_ocr.py"]
 CMD []

@@ -9,20 +9,18 @@
 ```powershell
 cd c:\Users\nanak\Dropbox\PKM\pdf-ocr
 
-# 入力ファイルを渡すだけ（出力は入力と同じディレクトリに 入力名.md）
-# 入力は data 外でも可（実行前に data にコピーして作業）
-.\run.ps1 .\data\book.pdf
-.\run.ps1 C:\path\to\other\book.pdf
+# 任意のパスの PDF を任意のパスの md に出力（data ディレクトリ不要）
+.\run.ps1 C:\path\to\book.pdf
+.\run.ps1 C:\path\to\book.pdf -Output C:\path\to\result.md
 
-# 出力先を指定（任意のディレクトリ、相対パスはカレントディレクトリ基準）
-.\run.ps1 .\data\book.pdf -Output .\output\book.md
-.\run.ps1 .\data\book.pdf -Output C:\path\to\result.md
+# 出力先省略時は入力と同じディレクトリに 入力名.md
+.\run.ps1 .\book.pdf
 
 # 解像度を指定（デフォルト 200）
-.\run.ps1 .\data\book.pdf -Dpi 250
+.\run.ps1 .\book.pdf -Dpi 250
 
 # 軽量モード（メモリ節約、大容量PDF向け）
-.\run.ps1 .\data\book.pdf -Lite
+.\run.ps1 .\book.pdf -Lite
 ```
 
 ## 前提条件
@@ -34,6 +32,7 @@ cd c:\Users\nanak\Dropbox\PKM\pdf-ocr
 
 - 出力先を指定しない場合: 入力 PDF と同じディレクトリに `入力名.md` が生成されます
 - `-Output` で指定した場合: 指定したパスに生成されます（ディレクトリがなければ自動作成）
+- 入力・出力の親ディレクトリを Docker に直接マウントするため、data ディレクトリは不要です
 
 ## 注意
 

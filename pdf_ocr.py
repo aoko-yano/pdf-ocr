@@ -43,7 +43,7 @@ def main():
             cmd.append("--lite")
 
         print(f"処理中: {pdf_path}", flush=True)
-        result = subprocess.run(cmd, cwd="/data")
+        result = subprocess.run(cmd, cwd="/tmp")
         if result.returncode != 0:
             sys.exit(result.returncode)
 
@@ -56,7 +56,9 @@ def main():
         for f in md_files:
             parts.append(f.read_text(encoding="utf-8", errors="replace"))
 
-        Path(output).write_text("\n\n".join(parts), encoding="utf-8")
+        out_path = Path(output)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text("\n\n".join(parts), encoding="utf-8")
 
     print(f"完了: {output}")
 
