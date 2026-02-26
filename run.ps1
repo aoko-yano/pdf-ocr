@@ -1,5 +1,5 @@
-# PDF OCR - YomiToku（Docker 実行）
-# 使い方: .\run.ps1 input.pdf [-Output output.md]
+# PDF OCR（Docker 実行）
+# 使い方: .\run.ps1 input.pdf [-Output output.md] [-Engine yomitoku|ndlocr]
 # 任意のパスの PDF を任意のパスの md に出力（data ディレクトリ不要）
 
 param(
@@ -10,7 +10,10 @@ param(
     [Parameter(Mandatory=$false)]
     [int]$Dpi = 200,
     [Parameter(Mandatory=$false)]
-    [switch]$Lite
+    [switch]$Lite,
+    [Parameter(Mandatory=$false)]
+    [ValidateSet("yomitoku", "ndlocr")]
+    [string]$Engine = "yomitoku"
 )
 
 $ErrorActionPreference = "Stop"
@@ -50,15 +53,19 @@ if ($LASTEXITCODE -ne 0) {
     Write-Error "Dockerが起動していません。Docker Desktopを起動してください。"
 }
 
-$imageName = "pdf-ocr"
+$scriptDir = if ($PSScriptRoot) { (Resolve-Path $PSScriptRoot).Path } else { (Get-Location).Path }
+$imageName = if ($Engine -eq "ndlocr") { "pdf-ocr-ndlocr" } else { "pdf-ocr" }
+$engineDir = if ($Engine -eq "ndlocr") { "ndlocr" } else { "yomitoku" }
+
 docker image inspect $imageName 2>$null | Out-Null
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "イメージをビルド中..."
-    docker build -t $imageName .
+    Write-Host "イメージをビルド中 ($Engine)..."
+    docker build -f (Join-Path $engineDir "Dockerfile") -t $imageName (Join-Path $scriptDir $engineDir)
     if ($LASTEXITCODE -ne 0) { exit 1 }
 }
 
-Write-Host "OCR実行中: $inputName (YomiToku)"
+$engineLabel = if ($Engine -eq "ndlocr") { "NDLOCR-Lite" } else { "YomiToku" }
+Write-Host "OCR実行中: $inputName ($engineLabel)"
 Write-Host "出力先: $outputFullPath"
 Write-Host ""
 
@@ -72,7 +79,7 @@ $dockerArgs = @(
     "/output/$outputName",
     "--dpi", $Dpi
 )
-if ($Lite) { $dockerArgs += "--lite" }
+if ($Engine -eq "yomitoku" -and $Lite) { $dockerArgs += "--lite" }
 & docker $dockerArgs
 
 if ($LASTEXITCODE -eq 0) {
