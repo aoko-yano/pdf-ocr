@@ -1,70 +1,71 @@
-# PDF OCR (scan-to-markdown)
+# PDF OCR（PDF→Markdown）
 
-Extract text from scanned PDF files by running OCR inside Docker.
+スキャンしたPDFをOCRで文字起こしし、Markdownとして保存します。  
+処理はDocker上で実行します。
 
-## Structure
+## 構成
 
 ```text
 pdf-ocr/
-├── run-gui.ps1      # WPF GUI (multi-PDF batch)
-├── run.ps1          # CLI wrapper
-├── build-exe.ps1    # Build pdf-ocr.exe from run-gui.ps1
-├── yomitoku/        # YomiToku engine
+├── run-gui.ps1      # WPF GUI（複数PDF一括処理）
+├── run.ps1          # CLIラッパー
+├── build-exe.ps1    # run-gui.ps1 から pdf-ocr.exe を生成
+├── yomitoku/        # YomiToku エンジン
 │   ├── Dockerfile
 │   └── pdf_ocr.py
-└── ndlocr/          # NDLOCR-Lite engine
+└── ndlocr/          # NDLOCR-Lite エンジン
     ├── Dockerfile
     └── pdf_ocr.py
 ```
 
-## Engines
+## エンジン
 
-| Engine | Description | License |
+| エンジン | 説明 | ライセンス |
 |---|---|---|
-| `yomitoku` (default) | Japanese OCR model | CC BY-NC-SA 4.0 |
-| `ndlocr` | NDL OCR Lite, CPU-friendly | CC BY 4.0 |
+| `yomitoku`（デフォルト） | 日本語OCRモデル | CC BY-NC-SA 4.0 |
+| `ndlocr` | NDLOCR-Lite（CPUでも高速） | CC BY 4.0 |
 
-## Prerequisites
+## 前提条件
 
-- Docker Desktop (running)
-- First run takes time for image build/model download
+- Docker Desktop が起動していること
+- 初回実行時はイメージビルド／モデル取得のため時間がかかります
 
-## GUI usage (recommended)
+## GUIで使う（推奨）
 
 ```powershell
 cd c:\Users\nanak\Dropbox\PKM\pdf-ocr
 .\run-gui.ps1
 ```
 
-GUI features:
-- Select multiple PDFs
-- Select folder (recursive PDF scan)
-- Drag and drop files/folders
-- Output next to source or to a custom folder
-- Engine/DPI/Lite options
-- Per-file log and batch summary
+GUIでできること：
+- 複数PDFの選択
+- フォルダ指定（再帰的にPDF収集）
+- ファイル／フォルダのドラッグ＆ドロップ
+- 出力先を入力元と同じフォルダ or 別フォルダで指定
+- エンジン／DPI／Liteモード設定
+- ファイル単位ログと最終集計表示
 
-## Build and run EXE
+## EXEを作成して使う
 
 ```powershell
 cd c:\Users\nanak\Dropbox\PKM\pdf-ocr
 .\build-exe.ps1
 ```
 
-Then run `pdf-ocr.exe`.
+生成後は `pdf-ocr.exe` を実行してください。
 
-Keep these in the same folder:
+同じフォルダに置く必要があるもの：
 - `pdf-ocr.exe`
 - `run.ps1`
 - `yomitoku/`
 - `ndlocr/`
 
-## CLI usage
+## CLIで使う
 
 ```powershell
 cd c:\Users\nanak\Dropbox\PKM\pdf-ocr
 
-# yomitoku (default)
+# yomitoku（デフォルト）
 .\run.ps1 C:\path\to\book.pdf
 .\run.ps1 .\book.pdf -Output result.md -Dpi 250 -Lite
 
@@ -73,18 +74,18 @@ cd c:\Users\nanak\Dropbox\PKM\pdf-ocr
 .\run.ps1 .\book.pdf -Engine ndlocr -Output result.md
 ```
 
-Options:
-- `-Output` output markdown path (default: same folder as input)
-- `-Dpi` image DPI (default: 200)
-- `-Engine` `yomitoku` or `ndlocr`
-- `-Lite` only for `yomitoku`
+主なオプション：
+- `-Output` 出力Markdownパス（省略時は入力と同じフォルダ）
+- `-Dpi` 画像DPI（デフォルト: 200）
+- `-Engine` `yomitoku` または `ndlocr`
+- `-Lite` `yomitoku` のみ有効
 
-## Troubleshooting
+## トラブルシューティング
 
-- If GUI shows many log lines, success/failure is decided by process exit code.
-- If every task fails immediately, check Docker Desktop status.
-- If EXE behaves differently, rebuild with `.\build-exe.ps1` after script updates.
+- GUIログに多くの行が出ても、最終的な成否は終了コードで判定されます。
+- 全件が即失敗する場合は、Docker Desktopの起動状態を確認してください。
+- スクリプト更新後にEXEの挙動が古い場合は、`.\build-exe.ps1` で再生成してください。
 
-## License
+## ライセンス
 
-This repository is MIT licensed. See [LICENSE](LICENSE).
+このリポジトリはMIT Licenseです。詳細は [LICENSE](LICENSE) を参照してください。
