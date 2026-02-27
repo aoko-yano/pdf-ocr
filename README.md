@@ -58,3 +58,7 @@ cd c:\Users\nanak\Dropbox\PKM\pdf-ocr
 - **YomiToku**: CC BY-NC-SA 4.0。個人・研究目的は自由。商用利用は別途ライセンスが必要です。
 - **NDLOCR-Lite**: CC BY 4.0。国立国会図書館が公開。
 - CPU モードで動作（Docker 内）。GPU を使う場合はローカルにインストールして直接実行してください。
+
+## ライセンス
+
+本リポジトリは MIT License です。詳細は [LICENSE](LICENSE) を参照してください。
