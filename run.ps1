@@ -1,92 +1,97 @@
-# PDF OCR（Docker 実行）
-# 使い方: .\run.ps1 input.pdf [-Output output.md] [-Engine yomitoku|ndlocr]
-# 任意のパスの PDF を任意のパスの md に出力（data ディレクトリ不要）
-
 param(
-    [Parameter(Mandatory=$true, Position=0)]
+    [Parameter(Mandatory = $true, Position = 0)]
     [string]$InputPdf,
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [string]$Output = "",
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [int]$Dpi = 200,
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [switch]$Lite,
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [ValidateSet("yomitoku", "ndlocr")]
     [string]$Engine = "yomitoku"
 )
 
 $ErrorActionPreference = "Stop"
 
-$InputPdf = $InputPdf.Trim() -replace "`r`n", "" -replace "`n", ""
-
-if (-not (Test-Path $InputPdf)) {
-    Write-Error "ファイルが見つかりません: $InputPdf"
+# On PowerShell 7+, native stderr can become terminating errors.
+# yomiToku logs INFO to stderr, so disable that behavior.
+if (Get-Variable -Name PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue) {
+    Set-Variable -Name PSNativeCommandUseErrorActionPreference -Value $false
 }
 
-$inputFullPath = (Resolve-Path $InputPdf).Path
-$inputDir = Split-Path $inputFullPath -Parent
-$inputName = Split-Path $inputFullPath -Leaf
+$InputPdf = $InputPdf.Trim() -replace "`r`n", "" -replace "`n", ""
+if (-not (Test-Path -LiteralPath $InputPdf)) {
+    Write-Error ("File not found: {0}" -f $InputPdf)
+    exit 1
+}
 
-# 出力パス
+$inputFullPath = (Resolve-Path -LiteralPath $InputPdf).Path
+$inputDir = Split-Path -Path $inputFullPath -Parent
+$inputName = Split-Path -Path $inputFullPath -Leaf
+
 $outputSpec = if ($Output) { $Output.Trim() } else { "" }
 if ($outputSpec) {
-    $outputFullPath = if ([System.IO.Path]::IsPathRooted($outputSpec)) {
-        [System.IO.Path]::GetFullPath($outputSpec)
+    if ([System.IO.Path]::IsPathRooted($outputSpec)) {
+        $outputFullPath = [System.IO.Path]::GetFullPath($outputSpec)
     } else {
-        [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $outputSpec))
+        $outputFullPath = [System.IO.Path]::GetFullPath((Join-Path -Path (Get-Location).Path -ChildPath $outputSpec))
     }
 } else {
     $baseName = [System.IO.Path]::GetFileNameWithoutExtension($inputName)
-    $outputFullPath = Join-Path $inputDir ($baseName + ".md")
+    $outputFullPath = Join-Path -Path $inputDir -ChildPath ($baseName + ".md")
 }
 
-$outputDir = Split-Path $outputFullPath -Parent
-$outputName = Split-Path $outputFullPath -Leaf
-
-if (-not (Test-Path $outputDir)) {
+$outputDir = Split-Path -Path $outputFullPath -Parent
+$outputName = Split-Path -Path $outputFullPath -Leaf
+if (-not (Test-Path -LiteralPath $outputDir)) {
     New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
 }
 
-docker info 2>$null | Out-Null
+& docker info *> $null
 if ($LASTEXITCODE -ne 0) {
-    Write-Error "Dockerが起動していません。Docker Desktopを起動してください。"
+    Write-Error "Docker is not running. Start Docker Desktop first."
+    exit 1
 }
 
-$scriptDir = if ($PSScriptRoot) { (Resolve-Path $PSScriptRoot).Path } else { (Get-Location).Path }
-$imageName = if ($Engine -eq "ndlocr") { "pdf-ocr-ndlocr" } else { "pdf-ocr" }
+$scriptDir = if ($PSScriptRoot) { (Resolve-Path -LiteralPath $PSScriptRoot).Path } else { (Get-Location).Path }
 $engineDir = if ($Engine -eq "ndlocr") { "ndlocr" } else { "yomitoku" }
+$imageName = if ($Engine -eq "ndlocr") { "pdf-ocr-ndlocr" } else { "pdf-ocr" }
+$enginePath = Join-Path -Path $scriptDir -ChildPath $engineDir
+$dockerfilePath = Join-Path -Path $enginePath -ChildPath "Dockerfile"
 
-docker image inspect $imageName 2>$null | Out-Null
+& docker image inspect $imageName *> $null
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "イメージをビルド中 ($Engine)..."
-    docker build -f (Join-Path $engineDir "Dockerfile") -t $imageName (Join-Path $scriptDir $engineDir)
-    if ($LASTEXITCODE -ne 0) { exit 1 }
+    Write-Host ("Building Docker image ({0})..." -f $Engine)
+    & docker build -f $dockerfilePath -t $imageName $enginePath
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
 }
 
 $engineLabel = if ($Engine -eq "ndlocr") { "NDLOCR-Lite" } else { "YomiToku" }
-Write-Host "OCR実行中: $inputName ($engineLabel)"
-Write-Host "出力先: $outputFullPath"
-Write-Host ""
+Write-Host ("OCR input: {0} ({1})" -f $inputName, $engineLabel)
+Write-Host ("Output: {0}" -f $outputFullPath)
 
-# 入力・出力の親ディレクトリを直接マウント（data 経由なし）
 $dockerArgs = @(
     "run", "--rm",
-    "-v", "${inputDir}:/input",
-    "-v", "${outputDir}:/output",
+    "-v", ("{0}:/input" -f $inputDir),
+    "-v", ("{0}:/output" -f $outputDir),
     $imageName,
-    "/input/$inputName",
-    "/output/$outputName",
+    ("/input/{0}" -f $inputName),
+    ("/output/{0}" -f $outputName),
     "--dpi", $Dpi
 )
-if ($Engine -eq "yomitoku" -and $Lite) { $dockerArgs += "--lite" }
-& docker $dockerArgs
-
-if ($LASTEXITCODE -eq 0) {
-    Write-Host ""
-    Write-Host "完了: $outputFullPath"
-} else {
-    Write-Host ""
-    Write-Error "OCR処理でエラーが発生しました (終了コード: $LASTEXITCODE)"
-    exit $LASTEXITCODE
+if ($Engine -eq "yomitoku" -and $Lite) {
+    $dockerArgs += "--lite"
 }
+
+& docker @dockerArgs
+$code = $LASTEXITCODE
+if ($code -eq 0) {
+    Write-Host ("Done: {0}" -f $outputFullPath)
+    exit 0
+}
+
+Write-Error ("OCR failed (exit code: {0})" -f $code)
+exit $code

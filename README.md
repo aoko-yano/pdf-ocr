@@ -1,64 +1,90 @@
-# PDF OCR（スキャン書籍の文字起こし）
+# PDF OCR (scan-to-markdown)
 
-スキャンしたPDFからテキストを抽出。Docker 上で OCR を実行します。
+Extract text from scanned PDF files by running OCR inside Docker.
 
-## 構成
+## Structure
 
-```
+```text
 pdf-ocr/
-├── run.ps1          # 共通ラッパー
-├── yomitoku/        # YomiToku エンジン
+├── run-gui.ps1      # WPF GUI (multi-PDF batch)
+├── run.ps1          # CLI wrapper
+├── build-exe.ps1    # Build pdf-ocr.exe from run-gui.ps1
+├── yomitoku/        # YomiToku engine
 │   ├── Dockerfile
 │   └── pdf_ocr.py
-└── ndlocr/          # NDLOCR-Lite エンジン
+└── ndlocr/          # NDLOCR-Lite engine
     ├── Dockerfile
     └── pdf_ocr.py
 ```
 
-## エンジン
+## Engines
 
-| エンジン | 説明 | ライセンス |
-|----------|------|------------|
-| **YomiToku**（デフォルト） | [日本語特化 AI-OCR](https://github.com/kotaro-kinoshita/yomitoku) | CC BY-NC-SA 4.0 |
-| **NDLOCR-Lite** | [国立国会図書館](https://github.com/ndl-lab/ndlocr-lite)・GPU不要・高速 | CC BY 4.0 |
+| Engine | Description | License |
+|---|---|---|
+| `yomitoku` (default) | Japanese OCR model | CC BY-NC-SA 4.0 |
+| `ndlocr` | NDL OCR Lite, CPU-friendly | CC BY 4.0 |
 
-## 使い方
+## Prerequisites
+
+- Docker Desktop (running)
+- First run takes time for image build/model download
+
+## GUI usage (recommended)
+
+```powershell
+cd c:\Users\nanak\Dropbox\PKM\pdf-ocr
+.\run-gui.ps1
+```
+
+GUI features:
+- Select multiple PDFs
+- Select folder (recursive PDF scan)
+- Drag and drop files/folders
+- Output next to source or to a custom folder
+- Engine/DPI/Lite options
+- Per-file log and batch summary
+
+## Build and run EXE
+
+```powershell
+cd c:\Users\nanak\Dropbox\PKM\pdf-ocr
+.\build-exe.ps1
+```
+
+Then run `pdf-ocr.exe`.
+
+Keep these in the same folder:
+- `pdf-ocr.exe`
+- `run.ps1`
+- `yomitoku/`
+- `ndlocr/`
+
+## CLI usage
 
 ```powershell
 cd c:\Users\nanak\Dropbox\PKM\pdf-ocr
 
-# YomiToku（デフォルト）
+# yomitoku (default)
 .\run.ps1 C:\path\to\book.pdf
 .\run.ps1 .\book.pdf -Output result.md -Dpi 250 -Lite
 
-# NDLOCR-Lite
+# ndlocr
 .\run.ps1 .\book.pdf -Engine ndlocr
 .\run.ps1 .\book.pdf -Engine ndlocr -Output result.md
 ```
 
-## オプション
+Options:
+- `-Output` output markdown path (default: same folder as input)
+- `-Dpi` image DPI (default: 200)
+- `-Engine` `yomitoku` or `ndlocr`
+- `-Lite` only for `yomitoku`
 
-- `-Output`: 出力パス（省略時: 入力と同じディレクトリに `入力名.md`）
-- `-Dpi`: 解像度（デフォルト: 200）
-- `-Engine`: エンジン（`yomitoku` または `ndlocr`）
-- `-Lite` / `--lite`: 軽量モード（yomitoku のみ、メモリ節約）
+## Troubleshooting
 
-## 前提条件
+- If GUI shows many log lines, success/failure is decided by process exit code.
+- If every task fails immediately, check Docker Desktop status.
+- If EXE behaves differently, rebuild with `.\build-exe.ps1` after script updates.
 
-- Docker Desktop
-- 初回はイメージビルドに数分かかります（NDLOCR-Lite はモデル取得のためやや長め）
+## License
 
-## 出力
-
-- 出力先を指定しない場合: 入力 PDF と同じディレクトリに `入力名.md` が生成されます
-- 入力・出力の親ディレクトリを Docker に直接マウントするため、data ディレクトリは不要です
-
-## 注意
-
-- **YomiToku**: CC BY-NC-SA 4.0。個人・研究目的は自由。商用利用は別途ライセンスが必要です。
-- **NDLOCR-Lite**: CC BY 4.0。国立国会図書館が公開。
-- CPU モードで動作（Docker 内）。GPU を使う場合はローカルにインストールして直接実行してください。
-
-## ライセンス
-
-本リポジトリは MIT License です。詳細は [LICENSE](LICENSE) を参照してください。
+This repository is MIT licensed. See [LICENSE](LICENSE).
