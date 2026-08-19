@@ -10,8 +10,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # PyTorch (CPU) + YomiToku
-RUN pip install --no-cache-dir torch torchvision \
-    && pip install --no-cache-dir yomitoku
+# CPU専用インデックスを指定する。既定のPyPIホイールはCUDAライブラリを同梱していて
+# 数GBあり、ダウンロードがタイムアウトしやすい。
+RUN pip install --no-cache-dir --timeout 120 --retries 5 \
+        --index-url https://download.pytorch.org/whl/cpu \
+        torch torchvision \
+    && pip install --no-cache-dir --timeout 120 --retries 5 yomitoku
 
 WORKDIR /app
 COPY pdf_ocr.py .
