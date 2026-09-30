@@ -16,7 +16,6 @@ def main():
     parser.add_argument("input_pdf", help="入力PDFファイル")
     parser.add_argument("output_md", nargs="?", help="出力Markdown（省略時: 入力名.md）")
     parser.add_argument("--dpi", type=int, default=200, help="PDF読取解像度（デフォルト: 200）")
-    parser.add_argument("--lite", action="store_true", help="軽量モード（メモリ節約）")
     parser.add_argument("--device", choices=["cpu", "cuda"], default="cpu", help="推論デバイス（デフォルト: cpu）")
     args = parser.parse_args()
 
@@ -40,8 +39,6 @@ def main():
             "-d", args.device,
             "--combine",
         ]
-        if args.lite:
-            cmd.append("--lite")
 
         print(f"処理中: {pdf_path}", flush=True)
         result = subprocess.run(cmd, cwd="/tmp")

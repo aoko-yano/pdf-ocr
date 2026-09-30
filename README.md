@@ -38,7 +38,7 @@ pdf-ocr/
 ```bash
 # yomitoku・GPU（デフォルト）
 ./run.sh /path/to/book.pdf
-./run.sh book.pdf -o result.md --dpi 250 --lite
+./run.sh book.pdf -o result.md --dpi 250
 
 # ndlocr（常に CPU）
 ./run.sh book.pdf -e ndlocr
@@ -52,7 +52,6 @@ pdf-ocr/
 - `-e`, `--engine` `yomitoku` または `ndlocr`
 - `-d`, `--device` `cuda` または `cpu`（デフォルト: `cuda`。`ndlocr` では無視）
 - `--dpi` 画像DPI（デフォルト: 200）
-- `--lite` `yomitoku` のみ有効
 
 ## トラブルシューティング
 

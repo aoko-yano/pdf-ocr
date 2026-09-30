@@ -1,10 +1,10 @@
 #!/bin/bash
 # PDF OCR - Linux CLIラッパー
-# 使い方: ./run.sh <input.pdf> [-o output.md] [-e yomitoku|ndlocr] [-d cuda|cpu] [--dpi 200] [--lite]
+# 使い方: ./run.sh <input.pdf> [-o output.md] [-e yomitoku|ndlocr] [-d cuda|cpu] [--dpi 200]
 set -euo pipefail
 
 usage() {
-    echo "使い方: $0 <input.pdf> [-o output.md] [-e yomitoku|ndlocr] [-d cuda|cpu] [--dpi 200] [--lite]"
+    echo "使い方: $0 <input.pdf> [-o output.md] [-e yomitoku|ndlocr] [-d cuda|cpu] [--dpi 200]"
     exit 1
 }
 
@@ -13,7 +13,6 @@ OUTPUT=""
 ENGINE="yomitoku"
 DEVICE="cuda"
 DPI=200
-LITE=""
 
 # 引数パース
 INPUT_PDF=""
@@ -23,7 +22,6 @@ while [[ $# -gt 0 ]]; do
         -e|--engine) ENGINE="$2"; shift 2 ;;
         -d|--device) DEVICE="$2"; shift 2 ;;
         --dpi)       DPI="$2";    shift 2 ;;
-        --lite)      LITE="--lite"; shift ;;
         -h|--help)   usage ;;
         -*) echo "不明なオプション: $1"; usage ;;
         *)  INPUT_PDF="$1"; shift ;;
@@ -53,10 +51,17 @@ mkdir -p "$OUTPUT_DIR"
 # エンジン×デバイスごとに別イメージ（CPU 版に CUDA ライブラリを積まないため）
 IMAGE="pdf-ocr-${ENGINE}-${DEVICE}"
 GPU_OPT=()
-DEVICE_OPT=""
-if [[ "$DEVICE" == cuda ]]; then
-    GPU_OPT=(--gpus all)
-    DEVICE_OPT="--device cuda"
+[[ "$DEVICE" == cuda ]] && GPU_OPT=(--gpus all)
+
+# YomiToku だけが受け取る引数とマウント（ndlocr の pdf_ocr.py は --device を知らない）
+ENGINE_OPT=()
+CACHE_OPT=()
+if [[ "$ENGINE" == yomitoku ]]; then
+    ENGINE_OPT=(--device "$DEVICE")
+    # モデルを HuggingFace から取るので、ホストのキャッシュを貸して毎回の再取得（約100秒）を避ける
+    HF_CACHE="${HOME}/.cache/huggingface"
+    mkdir -p "$HF_CACHE"
+    CACHE_OPT=(-v "${HF_CACHE}:/tmp/.cache/huggingface")
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -73,16 +78,12 @@ fi
 echo "OCR開始: ${INPUT_NAME} (${ENGINE}, ${DEVICE})"
 echo "出力先: ${OUTPUT}"
 
-# YomiToku はモデルを HuggingFace から取るので、ホストのキャッシュを貸して毎回の再取得（約100秒）を避ける
-HF_CACHE="${HOME}/.cache/huggingface"
-mkdir -p "$HF_CACHE"
-
 # -u で実行ユーザーのUID:GIDを渡す（ファイルオーナーをrootにしない）
 # /etc/passwd・/etc/group をマウント: PyTorch等がgetpwuid()でユーザー名を引くため必要
 docker run --rm "${GPU_OPT[@]}" \
     -u "$(id -u):$(id -g)" \
     -e HOME=/tmp \
-    -v "${HF_CACHE}:/tmp/.cache/huggingface" \
+    "${CACHE_OPT[@]}" \
     -v /etc/passwd:/etc/passwd:ro \
     -v /etc/group:/etc/group:ro \
     -v "${INPUT_DIR}:/input" \
@@ -91,6 +92,6 @@ docker run --rm "${GPU_OPT[@]}" \
     "/input/${INPUT_NAME}" \
     "/output/${OUTPUT_NAME}" \
     --dpi "$DPI" \
-    $LITE $DEVICE_OPT
+    "${ENGINE_OPT[@]}"
 
 echo "完了: ${OUTPUT}"
