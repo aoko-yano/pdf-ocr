@@ -3,13 +3,13 @@
 スキャンしたPDFをOCRで文字起こしし、Markdownとして保存します。  
 処理はDocker上で実行します。
 
+born-digital のPDF（テキスト層があるもの）には使わないでください。`pdftotext` のほうが正確です。
+
 ## 構成
 
 ```text
 pdf-ocr/
-├── run-gui.ps1      # WPF GUI（複数PDF一括処理）
-├── run.ps1          # CLIラッパー
-├── build-exe.ps1    # run-gui.ps1 から pdf-ocr.exe を生成
+├── run.sh           # CLIラッパー
 ├── yomitoku/        # YomiToku エンジン
 │   ├── Dockerfile
 │   └── pdf_ocr.py
@@ -22,69 +22,45 @@ pdf-ocr/
 
 | エンジン | 説明 | ライセンス |
 |---|---|---|
-| `yomitoku`（デフォルト） | 日本語OCRモデル | CC BY-NC-SA 4.0 |
-| `ndlocr` | NDLOCR-Lite（CPUでも高速） | CC BY 4.0 |
+| `yomitoku`（デフォルト） | 日本語OCRモデル。GPUで約13倍速い（実測: 4ページで CPU 78秒・GPU 6秒） | CC BY-NC-SA 4.0 |
+| `ndlocr` | NDLOCR-Lite。CPUでも速く、GPUにしても変わらないので常に CPU で動く | CC BY 4.0 |
 
 ## 前提条件
 
-- Docker Desktop が起動していること
-- 初回実行時はイメージビルド／モデル取得のため時間がかかります
+- Docker が起動していること
+- GPU（`-d cuda`、デフォルト）を使う場合は NVIDIA ドライバ 580 以上と NVIDIA Container Toolkit。
+  VRAM 8GB では llama-server（`localchat`）と同時に動かせないので、先に止めておく
+- 初回実行時はイメージビルド／モデル取得のため時間がかかります。
+  イメージはエンジン×デバイスごとに別で、`pdf-ocr-<engine>-<device>` という名前です
 
-## GUIで使う（推奨）
+## 使い方
 
-```powershell
-cd c:\Users\nanak\Dropbox\PKM\pdf-ocr
-.\run-gui.ps1
-```
+```bash
+# yomitoku・GPU（デフォルト）
+./run.sh /path/to/book.pdf
+./run.sh book.pdf -o result.md --dpi 250 --lite
 
-GUIでできること：
-- 複数PDFの選択
-- フォルダ指定（再帰的にPDF収集）
-- ファイル／フォルダのドラッグ＆ドロップ
-- 出力先を入力元と同じフォルダ or 別フォルダで指定
-- エンジン／DPI／Liteモード設定
-- ファイル単位ログと最終集計表示
+# ndlocr（常に CPU）
+./run.sh book.pdf -e ndlocr
 
-## EXEを作成して使う
-
-```powershell
-cd c:\Users\nanak\Dropbox\PKM\pdf-ocr
-.\build-exe.ps1
-```
-
-生成後は `pdf-ocr.exe` を実行してください。
-
-同じフォルダに置く必要があるもの：
-- `pdf-ocr.exe`
-- `run.ps1`
-- `yomitoku/`
-- `ndlocr/`
-
-## CLIで使う
-
-```powershell
-cd c:\Users\nanak\Dropbox\PKM\pdf-ocr
-
-# yomitoku（デフォルト）
-.\run.ps1 C:\path\to\book.pdf
-.\run.ps1 .\book.pdf -Output result.md -Dpi 250 -Lite
-
-# ndlocr
-.\run.ps1 .\book.pdf -Engine ndlocr
-.\run.ps1 .\book.pdf -Engine ndlocr -Output result.md
+# yomitoku を CPU で動かす
+./run.sh book.pdf -d cpu
 ```
 
 主なオプション：
-- `-Output` 出力Markdownパス（省略時は入力と同じフォルダ）
-- `-Dpi` 画像DPI（デフォルト: 200）
-- `-Engine` `yomitoku` または `ndlocr`
-- `-Lite` `yomitoku` のみ有効
+- `-o`, `--output` 出力Markdownパス（省略時は入力と同じフォルダ）
+- `-e`, `--engine` `yomitoku` または `ndlocr`
+- `-d`, `--device` `cuda` または `cpu`（デフォルト: `cuda`。`ndlocr` では無視）
+- `--dpi` 画像DPI（デフォルト: 200）
+- `--lite` `yomitoku` のみ有効
 
 ## トラブルシューティング
 
-- GUIログに多くの行が出ても、最終的な成否は終了コードで判定されます。
-- 全件が即失敗する場合は、Docker Desktopの起動状態を確認してください。
-- スクリプト更新後にEXEの挙動が古い場合は、`.\build-exe.ps1` で再生成してください。
+- `pdf_ocr.py` や `Dockerfile` を更新したら、該当イメージを消して再ビルドさせてください
+  （`docker rmi pdf-ocr-yomitoku-cuda` など）。
+- `-d cuda` で `out of memory` が出たら、VRAM を使っている他のプロセス（llama-server など）を
+  止めるか、`-d cpu` で実行してください。
+- YomiToku のモデルは初回に HuggingFace から取得し、`~/.cache/huggingface` に置きます。
 
 ## ライセンス
 
