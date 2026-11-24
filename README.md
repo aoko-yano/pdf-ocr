@@ -23,7 +23,7 @@ pdf-ocr/
 | エンジン | 説明 | ライセンス |
 |---|---|---|
 | `yomitoku`（デフォルト） | 日本語OCRモデル。GPUで約13倍速い（実測: 4ページで CPU 78秒・GPU 6秒） | CC BY-NC-SA 4.0 |
-| `ndlocr` | NDLOCR-Lite。CPUでも速く、GPUにしても変わらないので常に CPU で動く | CC BY 4.0 |
+| `ndlocr` | NDLOCR-Lite（v2.0.0 に固定。版は `ndlocr/Dockerfile` の `NDLOCR_VERSION`）。CPUでも速く、GPUにしても変わらないので常に CPU で動く。日本語専用で、é・è・à などは文字セットに無く脱落するので仏語には使えない | CC BY 4.0 |
 
 ## 前提条件
 
